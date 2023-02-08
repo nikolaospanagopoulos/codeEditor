@@ -6,12 +6,19 @@
 
 class Editor {
 private:
-  void drawRaws();
-
-public:
   typedef struct terminalSettings {
     struct termios original;
+    int rows;
+    int columns;
+
+    void getWindowSize();
+    terminalSettings();
+
   } terminalSettings;
+  void drawRaws();
+  bool enteredRawMode;
+
+public:
   terminalSettings settings;
   void clearScreen();
   void readKeyPress();

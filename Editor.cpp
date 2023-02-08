@@ -1,9 +1,25 @@
 #include "Editor.hpp"
 #include <cstddef>
+#include <exception>
+#include <stdexcept>
+#include <string>
 #define CTRL_KEY(key) ((key)&0b00011111)
 #include "CustomException.hpp"
 #include <cstdlib>
+#include <sys/ioctl.h>
 #include <unistd.h>
+Editor::terminalSettings::terminalSettings() : rows{0}, columns{0} {}
+
+// get terminal rows and columns
+void Editor::terminalSettings::getWindowSize() {
+  struct winsize ws;
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    throw CustomException(
+        (char *)"There was a problem calculating the terminal dimentions");
+  }
+  rows = ws.ws_col;
+  columns = ws.ws_row;
+}
 
 // terminal escape sequence
 void Editor::refreshScreen() {
@@ -21,8 +37,7 @@ void Editor::refreshScreen() {
 }
 
 void Editor::drawRaws() {
-  size_t x{};
-  for (x = 0; x < 24; x++) {
+  for (int i{}; i < settings.rows; i++) {
     write(STDOUT_FILENO, "~\r\n", 3);
   }
 }
@@ -43,6 +58,7 @@ void Editor::readKeyPress() {
     }
   }
 }
+
 bool Editor::processKeypress(const char &c) {
   switch (c) {
   case CTRL_KEY('q'):
@@ -58,10 +74,9 @@ void Editor::disableRawMode() {
         (char *)"There was an error setting the terminal attributes");
   }
 }
-Editor::Editor() : settings{} {}
+Editor::Editor() : enteredRawMode{false}, settings{} {}
 
 void Editor::enableRawMode() {
-
   if (tcgetattr(STDIN_FILENO, &settings.original) == -1) {
     throw CustomException((char *)"There was an error getting the terminal "
                                   "attributes");
@@ -75,6 +90,11 @@ void Editor::enableRawMode() {
   raw.c_cc[VMIN] = 0;
   raw.c_cc[VTIME] = 1;
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+  enteredRawMode = true;
 }
 
-Editor::~Editor() { disableRawMode(); }
+Editor::~Editor() {
+  if (enteredRawMode) {
+    disableRawMode();
+  }
+}
