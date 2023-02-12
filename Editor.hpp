@@ -6,12 +6,12 @@
 
 class Editor {
 private:
+  std::string *buffer;
   typedef struct terminalSettings {
     struct termios original;
     int rows;
     int columns;
 
-    void getWindowSize();
     terminalSettings();
 
   } terminalSettings;
@@ -19,6 +19,8 @@ private:
   bool enteredRawMode;
 
 public:
+  void getWindowSize();
+  void getCusrorPosition();
   terminalSettings settings;
   void clearScreen();
   void readKeyPress();

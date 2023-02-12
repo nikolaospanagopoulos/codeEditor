@@ -2,16 +2,18 @@
 #include "Editor.hpp"
 #include <exception>
 // set upper three bytes of key number to zero -> mirror CTRL functionality
-#define CTRL_KEY(key) ((key)&0b00011111)
 int main() {
 
   Editor editor;
   try {
     editor.enableRawMode();
-    editor.settings.getWindowSize();
-    editor.refreshScreen();
+    editor.getWindowSize();
+
+    // read key and refreshScreen
     editor.readKeyPress();
 
+    std::cout << editor.settings.rows << " " << editor.settings.columns
+              << std::endl;
   } catch (CustomException &e) {
     editor.clearScreen();
     std::cerr << e.what() << std::endl;

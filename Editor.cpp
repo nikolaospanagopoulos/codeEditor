@@ -1,6 +1,7 @@
 #include "Editor.hpp"
 #include <cstddef>
 #include <exception>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #define CTRL_KEY(key) ((key)&0b00011111)
@@ -11,34 +12,70 @@
 Editor::terminalSettings::terminalSettings() : rows{0}, columns{0} {}
 
 // get terminal rows and columns
-void Editor::terminalSettings::getWindowSize() {
+void Editor::getWindowSize() {
   struct winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-    throw CustomException(
-        (char *)"There was a problem calculating the terminal dimentions");
+    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) {
+      throw CustomException(
+          (char *)"There was a problem calculating the terminal dimentions");
+    }
+    getCusrorPosition();
+    return;
   }
-  rows = ws.ws_col;
-  columns = ws.ws_row;
+  settings.rows = ws.ws_row;
+  settings.columns = ws.ws_col;
+}
+
+// get cursor position
+void Editor::getCusrorPosition() {
+  char buf[32];
+  unsigned int i = 0;
+  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) {
+    throw CustomException(
+        (char *)("There was a problem calculating the cursor position"));
+  }
+  while (i < sizeof(buf) - 1) {
+    if (read(STDIN_FILENO, &buf[i], 1) != 1)
+      break;
+    if (buf[i] == 'R')
+      break;
+    i++;
+  }
+  buf[i] = '\0';
+  if (buf[0] != '\x1b' || buf[1] != '[')
+    return;
+
+  std::string tempString{&buf[2]};
+  for (size_t i{}; i < tempString.size(); i++) {
+    if (!std::isdigit(tempString[i])) {
+      tempString[i] = ' ';
+    }
+  }
+  std::stringstream is{tempString};
+  is >> settings.rows >> settings.columns;
 }
 
 // terminal escape sequence
 void Editor::refreshScreen() {
-
   // We are using the J command (Erase In Display) to clear the screen.
   // 2 means to clear whole screen
-  write(STDOUT_FILENO, "\x1b[2J]", 4);
+  buffer->append("\x1b[2J]");
+  buffer->append("\x1b[H");
   // put cursor at the beggining
-  write(STDOUT_FILENO, "\x1b[H", 3);
 
   drawRaws();
 
   // put cursor at the beggining
-  write(STDOUT_FILENO, "\x1b[H", 3);
+  buffer->append("\x1b[H");
+  write(STDOUT_FILENO, buffer->c_str(), buffer->size());
 }
 
 void Editor::drawRaws() {
   for (int i{}; i < settings.rows; i++) {
-    write(STDOUT_FILENO, "~\r\n", 3);
+    buffer->append("~");
+    if (i < settings.rows - 1) {
+      buffer->append("\r\n");
+    }
   }
 }
 
@@ -50,6 +87,7 @@ void Editor::clearScreen() {
 void Editor::readKeyPress() {
   char c{};
   while (true) {
+    refreshScreen();
     if (read(STDIN_FILENO, &c, 1) == -1) {
       throw CustomException((char *)"There was a problem reading the input");
     };
@@ -74,7 +112,10 @@ void Editor::disableRawMode() {
         (char *)"There was an error setting the terminal attributes");
   }
 }
-Editor::Editor() : enteredRawMode{false}, settings{} {}
+Editor::Editor() : enteredRawMode{false}, settings{} {
+
+  buffer = new std::string{};
+}
 
 void Editor::enableRawMode() {
   if (tcgetattr(STDIN_FILENO, &settings.original) == -1) {
@@ -97,4 +138,5 @@ Editor::~Editor() {
   if (enteredRawMode) {
     disableRawMode();
   }
+  delete buffer;
 }
