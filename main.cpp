@@ -12,8 +12,6 @@ int main() {
     // read key and refreshScreen
     editor.readKeyPress();
 
-    std::cout << editor.settings.rows << " " << editor.settings.columns
-              << std::endl;
   } catch (CustomException &e) {
     editor.clearScreen();
     std::cerr << e.what() << std::endl;

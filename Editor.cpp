@@ -57,11 +57,12 @@ void Editor::getCusrorPosition() {
 
 // terminal escape sequence
 void Editor::refreshScreen() {
-  // We are using the J command (Erase In Display) to clear the screen.
-  // 2 means to clear whole screen
-  buffer->append("\x1b[2J]");
+  // make cursor invisible
+  buffer->append("\x1b[?25l");
   buffer->append("\x1b[H");
-  // put cursor at the beggining
+  buffer->append("\x1b[?25h");
+  // make cursor visible
+  //  put cursor at the beggining
 
   drawRaws();
 
@@ -72,7 +73,28 @@ void Editor::refreshScreen() {
 
 void Editor::drawRaws() {
   for (int i{}; i < settings.rows; i++) {
-    buffer->append("~");
+
+    if (i == settings.rows / 3) {
+      std::string welcomeMessage{"Greek C++ editor"};
+      while (welcomeMessage.size() > settings.columns) {
+        welcomeMessage.pop_back();
+      }
+
+      int padding = (settings.columns - welcomeMessage.size()) / 2;
+      if (padding) {
+        buffer->append("~");
+        padding--;
+      }
+      while (padding--) {
+        buffer->append(" ");
+      }
+
+      buffer->append(welcomeMessage);
+    } else {
+      buffer->append("~");
+    }
+
+    buffer->append("\x1b[K");
     if (i < settings.rows - 1) {
       buffer->append("\r\n");
     }
