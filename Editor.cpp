@@ -1,6 +1,7 @@
 #include "Editor.hpp"
 #include <cstddef>
 #include <exception>
+#include <istream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -9,7 +10,8 @@
 #include <cstdlib>
 #include <sys/ioctl.h>
 #include <unistd.h>
-Editor::terminalSettings::terminalSettings() : rows{0}, columns{0} {}
+Editor::terminalState::terminalState()
+    : cursorX{0}, cursorY{0}, rows{0}, columns{0} {}
 
 // get terminal rows and columns
 void Editor::getWindowSize() {
@@ -60,14 +62,22 @@ void Editor::refreshScreen() {
   // make cursor invisible
   buffer->append("\x1b[?25l");
   buffer->append("\x1b[H");
-  buffer->append("\x1b[?25h");
-  // make cursor visible
-  //  put cursor at the beggining
 
   drawRaws();
 
   // put cursor at the beggining
-  buffer->append("\x1b[H");
+
+  std::stringstream is{};
+
+  // put cursor at the beggining
+  // add one to start from 1 based index
+  is << "\x1b[" << settings.cursorY + 1 << ";" << settings.cursorX + 1 << "H";
+
+  buffer->append(is.str());
+
+  // make cursor visible
+  // put cursor at the beggining
+  buffer->append("\x1b[?25h");
   write(STDOUT_FILENO, buffer->c_str(), buffer->size());
 }
 
@@ -76,7 +86,7 @@ void Editor::drawRaws() {
 
     if (i == settings.rows / 3) {
       std::string welcomeMessage{"Greek C++ editor"};
-      while (welcomeMessage.size() > settings.columns) {
+      while (welcomeMessage.size() > (size_t)settings.columns) {
         welcomeMessage.pop_back();
       }
 
@@ -106,26 +116,53 @@ void Editor::clearScreen() {
   write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
-void Editor::readKeyPress() {
+char Editor::readKeyPress() {
   char c{};
-  while (true) {
-    refreshScreen();
-    if (read(STDIN_FILENO, &c, 1) == -1) {
-      throw CustomException((char *)"There was a problem reading the input");
-    };
-    if (processKeypress(c)) {
-      break;
-    }
+  while (read(STDIN_FILENO, &c, 1) == -1) {
+    throw CustomException((char *)"There was a problem reading the input");
+  };
+  if (c == '\x1b') {
+    return getArrowKeys();
   }
+  return c;
 }
 
-bool Editor::processKeypress(const char &c) {
+char Editor::getArrowKeys() const {
+  char seq[3]{};
+  if (read(STDIN_FILENO, &seq[0], 1) != 1)
+    return '\x1b';
+  if (read(STDIN_FILENO, &seq[1], 1) != 1)
+    return '\x1b';
+  if (seq[0] == '[') {
+    switch (seq[1]) {
+    case 'A':
+      return 'k';
+    case 'B':
+      return 'j';
+    case 'C':
+      return 'l';
+    case 'D':
+      return 'h';
+    }
+  }
+  return '\x1b';
+}
+
+void Editor::processKeypress() {
+
+  char c = readKeyPress();
   switch (c) {
   case CTRL_KEY('q'):
     clearScreen();
-    return true;
+    terminate = true;
+    break;
+  case 'j':
+  case 'k':
+  case 'l':
+  case 'h':
+    editorMoveCursor(c);
+    break;
   }
-  return false;
 }
 void Editor::disableRawMode() {
 
@@ -161,4 +198,29 @@ Editor::~Editor() {
     disableRawMode();
   }
   delete buffer;
+}
+
+void Editor::editorMoveCursor(const char &key) {
+  switch (key) {
+  case 'h':
+    if (settings.cursorX > 0) {
+      settings.cursorX--;
+    }
+    break;
+  case 'l':
+    if (settings.cursorX < settings.columns - 1) {
+      settings.cursorX++;
+    }
+    break;
+  case 'j':
+    if (settings.cursorY < settings.rows - 1) {
+      settings.cursorY++;
+    }
+    break;
+  case 'k':
+    if (settings.cursorY > 0) {
+      settings.cursorY--;
+    }
+    break;
+  }
 }

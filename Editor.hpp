@@ -7,27 +7,31 @@
 class Editor {
 private:
   std::string *buffer;
-  typedef struct terminalSettings {
+  typedef struct terminalState {
     struct termios original;
+    int cursorX, cursorY;
     int rows;
     int columns;
 
-    terminalSettings();
+    terminalState();
 
-  } terminalSettings;
+  } terminalState;
   void drawRaws();
   bool enteredRawMode;
 
 public:
+  char getArrowKeys() const;
+  bool terminate = false;
+  void editorMoveCursor(const char &key);
   void getWindowSize();
   void getCusrorPosition();
-  terminalSettings settings;
+  terminalState settings;
   void clearScreen();
-  void readKeyPress();
+  char readKeyPress();
   void disableRawMode();
   void refreshScreen();
   void enableRawMode();
-  bool processKeypress(const char &c);
+  void processKeypress();
   ~Editor();
   Editor();
 };

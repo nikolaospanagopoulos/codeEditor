@@ -10,7 +10,10 @@ int main() {
     editor.getWindowSize();
 
     // read key and refreshScreen
-    editor.readKeyPress();
+    while (!editor.terminate) {
+      editor.refreshScreen();
+      editor.processKeypress();
+    }
 
   } catch (CustomException &e) {
     editor.clearScreen();
