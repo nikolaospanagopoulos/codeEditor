@@ -6,6 +6,14 @@
 
 class Editor {
 private:
+  enum editorSpecialKey {
+    ARROW_UP = 1000,
+    ARROW_DOWN,
+    ARROW_LEFT,
+    ARROW_RIGHT,
+    PAGE_UP,
+    PAGE_DOWN,
+  };
   std::string *buffer;
   typedef struct terminalState {
     struct termios original;
@@ -18,16 +26,17 @@ private:
   } terminalState;
   void drawRaws();
   bool enteredRawMode;
+  int getDirectionKeys(const char &c) const;
+  int getArrowKeys() const;
 
 public:
-  char getArrowKeys() const;
   bool terminate = false;
-  void editorMoveCursor(const char &key);
+  void editorMoveCursor(const int &key);
   void getWindowSize();
   void getCusrorPosition();
   terminalState settings;
   void clearScreen();
-  char readKeyPress();
+  int readKeyPress();
   void disableRawMode();
   void refreshScreen();
   void enableRawMode();

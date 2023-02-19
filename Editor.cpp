@@ -116,7 +116,7 @@ void Editor::clearScreen() {
   write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
-char Editor::readKeyPress() {
+int Editor::readKeyPress() {
   char c{};
   while (read(STDIN_FILENO, &c, 1) == -1) {
     throw CustomException((char *)"There was a problem reading the input");
@@ -124,10 +124,25 @@ char Editor::readKeyPress() {
   if (c == '\x1b') {
     return getArrowKeys();
   }
+
+  // todo: make it better
+  return getDirectionKeys(c);
+}
+int Editor::getDirectionKeys(const char &c) const {
+
+  switch (c) {
+  case 'j':
+    return Editor::editorSpecialKey::ARROW_DOWN;
+  case 'k':
+    return Editor::editorSpecialKey::ARROW_UP;
+  case 'l':
+    return Editor::editorSpecialKey::ARROW_RIGHT;
+  case 'h':
+    return Editor::editorSpecialKey::ARROW_LEFT;
+  }
   return c;
 }
-
-char Editor::getArrowKeys() const {
+int Editor::getArrowKeys() const {
   char seq[3]{};
   if (read(STDIN_FILENO, &seq[0], 1) != 1)
     return '\x1b';
@@ -136,26 +151,54 @@ char Editor::getArrowKeys() const {
   if (seq[0] == '[') {
     switch (seq[1]) {
     case 'A':
-      return 'k';
+      return Editor::editorSpecialKey::ARROW_UP;
     case 'B':
-      return 'j';
+      return Editor::editorSpecialKey::ARROW_DOWN;
     case 'C':
-      return 'l';
+      return Editor::editorSpecialKey::ARROW_RIGHT;
     case 'D':
-      return 'h';
+      return Editor::editorSpecialKey::ARROW_LEFT;
     }
   }
   return '\x1b';
 }
 
+void Editor::editorMoveCursor(const int &key) {
+  switch (key) {
+  case Editor::editorSpecialKey::ARROW_LEFT:
+    if (settings.cursorX > 0) {
+      settings.cursorX--;
+    }
+    break;
+  case Editor::editorSpecialKey::ARROW_RIGHT:
+    if (settings.cursorX < settings.columns - 1) {
+      settings.cursorX++;
+    }
+    break;
+  case Editor::editorSpecialKey::ARROW_DOWN:
+    if (settings.cursorY < settings.rows - 1) {
+      settings.cursorY++;
+    }
+    break;
+  case Editor::editorSpecialKey::ARROW_UP:
+    if (settings.cursorY > 0) {
+      settings.cursorY--;
+    }
+    break;
+  }
+}
 void Editor::processKeypress() {
 
-  char c = readKeyPress();
+  int c = readKeyPress();
   switch (c) {
   case CTRL_KEY('q'):
     clearScreen();
     terminate = true;
     break;
+  case Editor::editorSpecialKey::ARROW_UP:
+  case Editor::editorSpecialKey::ARROW_DOWN:
+  case Editor::editorSpecialKey::ARROW_LEFT:
+  case Editor::editorSpecialKey::ARROW_RIGHT:
   case 'j':
   case 'k':
   case 'l':
@@ -198,29 +241,4 @@ Editor::~Editor() {
     disableRawMode();
   }
   delete buffer;
-}
-
-void Editor::editorMoveCursor(const char &key) {
-  switch (key) {
-  case 'h':
-    if (settings.cursorX > 0) {
-      settings.cursorX--;
-    }
-    break;
-  case 'l':
-    if (settings.cursorX < settings.columns - 1) {
-      settings.cursorX++;
-    }
-    break;
-  case 'j':
-    if (settings.cursorY < settings.rows - 1) {
-      settings.cursorY++;
-    }
-    break;
-  case 'k':
-    if (settings.cursorY > 0) {
-      settings.cursorY--;
-    }
-    break;
-  }
 }
