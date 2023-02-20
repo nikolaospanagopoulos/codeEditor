@@ -155,10 +155,20 @@ int Editor::getArrowKeys() const {
       }
       if (seq[2] == '~') {
         switch (seq[1]) {
+        case '1':
+          return HOME;
+        case '3':
+          return DELETE;
+        case '4':
+          return END;
         case '5':
           return PAGE_UP;
         case '6':
           return PAGE_DOWN;
+        case '7':
+          return HOME;
+        case '8':
+          return END;
         }
       }
     } else {
@@ -171,6 +181,10 @@ int Editor::getArrowKeys() const {
         return ARROW_RIGHT;
       case 'D':
         return ARROW_LEFT;
+      case 'H':
+        return HOME;
+      case 'F':
+        return END;
       }
     }
   }
@@ -217,6 +231,12 @@ void Editor::processKeypress() {
     }
 
   } break;
+  case HOME:
+    settings.cursorX = 0;
+    break;
+  case END:
+    settings.cursorX = settings.columns - 1;
+    break;
   case Editor::editorSpecialKey::ARROW_UP:
   case Editor::editorSpecialKey::ARROW_DOWN:
   case Editor::editorSpecialKey::ARROW_LEFT:

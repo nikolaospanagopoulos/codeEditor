@@ -13,6 +13,9 @@ private:
     ARROW_RIGHT,
     PAGE_UP,
     PAGE_DOWN,
+    HOME,
+    END,
+    DELETE
   };
   std::string *buffer;
   typedef struct terminalState {
