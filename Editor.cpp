@@ -149,15 +149,29 @@ int Editor::getArrowKeys() const {
   if (read(STDIN_FILENO, &seq[1], 1) != 1)
     return '\x1b';
   if (seq[0] == '[') {
-    switch (seq[1]) {
-    case 'A':
-      return Editor::editorSpecialKey::ARROW_UP;
-    case 'B':
-      return Editor::editorSpecialKey::ARROW_DOWN;
-    case 'C':
-      return Editor::editorSpecialKey::ARROW_RIGHT;
-    case 'D':
-      return Editor::editorSpecialKey::ARROW_LEFT;
+    if (seq[1] >= '0' && seq[1] <= '9') {
+      if (read(STDIN_FILENO, &seq[2], 1) != 1) {
+        return '\x1b';
+      }
+      if (seq[2] == '~') {
+        switch (seq[1]) {
+        case '5':
+          return PAGE_UP;
+        case '6':
+          return PAGE_DOWN;
+        }
+      }
+    } else {
+      switch (seq[1]) {
+      case 'A':
+        return ARROW_UP;
+      case 'B':
+        return ARROW_DOWN;
+      case 'C':
+        return ARROW_RIGHT;
+      case 'D':
+        return ARROW_LEFT;
+      }
     }
   }
   return '\x1b';
@@ -165,22 +179,22 @@ int Editor::getArrowKeys() const {
 
 void Editor::editorMoveCursor(const int &key) {
   switch (key) {
-  case Editor::editorSpecialKey::ARROW_LEFT:
+  case ARROW_LEFT:
     if (settings.cursorX > 0) {
       settings.cursorX--;
     }
     break;
-  case Editor::editorSpecialKey::ARROW_RIGHT:
+  case ARROW_RIGHT:
     if (settings.cursorX < settings.columns - 1) {
       settings.cursorX++;
     }
     break;
-  case Editor::editorSpecialKey::ARROW_DOWN:
+  case ARROW_DOWN:
     if (settings.cursorY < settings.rows - 1) {
       settings.cursorY++;
     }
     break;
-  case Editor::editorSpecialKey::ARROW_UP:
+  case ARROW_UP:
     if (settings.cursorY > 0) {
       settings.cursorY--;
     }
@@ -195,6 +209,14 @@ void Editor::processKeypress() {
     clearScreen();
     terminate = true;
     break;
+  case PAGE_UP:
+  case PAGE_DOWN: {
+    int times = settings.rows;
+    while (times--) {
+      editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+    }
+
+  } break;
   case Editor::editorSpecialKey::ARROW_UP:
   case Editor::editorSpecialKey::ARROW_DOWN:
   case Editor::editorSpecialKey::ARROW_LEFT:
