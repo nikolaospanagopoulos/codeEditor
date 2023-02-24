@@ -1,8 +1,6 @@
 #pragma once
-#include <bitset>
-#include <cctype>
+#include "terminalState.hpp"
 #include <iostream>
-#include <termios.h>
 
 class Editor {
 private:
@@ -17,22 +15,16 @@ private:
     END,
     DELETE
   };
+  // cleanup
   std::string *buffer;
-  typedef struct terminalState {
-    struct termios original;
-    int cursorX, cursorY;
-    int rows;
-    int columns;
-
-    terminalState();
-
-  } terminalState;
   void drawRaws();
   bool enteredRawMode;
   int getDirectionKeys(const char &c) const;
   int getArrowKeys() const;
+  void appendRow(const std::string &row);
 
 public:
+  void editorOpen(const std::string fileName);
   bool terminate = false;
   void editorMoveCursor(const int &key);
   void getWindowSize();

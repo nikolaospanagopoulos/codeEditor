@@ -2,13 +2,16 @@
 #include "Editor.hpp"
 #include <exception>
 // set upper three bytes of key number to zero -> mirror CTRL functionality
-int main() {
+int main(int argc, char *argv[]) {
 
   Editor editor;
   try {
     editor.enableRawMode();
     editor.getWindowSize();
 
+    if (argc >= 2) {
+      editor.editorOpen(argv[1]);
+    }
     // read key and refreshScreen
     while (!editor.terminate) {
       editor.refreshScreen();

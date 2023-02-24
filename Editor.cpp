@@ -1,5 +1,6 @@
 #include "Editor.hpp"
 #include <cstddef>
+#include <cstring>
 #include <exception>
 #include <istream>
 #include <sstream>
@@ -8,10 +9,31 @@
 #define CTRL_KEY(key) ((key)&0b00011111)
 #include "CustomException.hpp"
 #include <cstdlib>
+#include <fstream>
 #include <sys/ioctl.h>
 #include <unistd.h>
-Editor::terminalState::terminalState()
-    : cursorX{0}, cursorY{0}, rows{0}, columns{0} {}
+
+void Editor::appendRow(const std::string &text) {
+  EditorRow *row = new EditorRow{};
+  row->rowText->append(text);
+  row->size = text.size();
+  settings.editorRows->push_back(row);
+  settings.numRows++;
+}
+void Editor::editorOpen(const std::string fileName) {
+  std::ifstream inFile{};
+  inFile.open(fileName);
+  if (!inFile) {
+    throw CustomException((char *)"There was a problem opening the file ");
+  }
+
+  std::string line{};
+  while (std::getline(inFile, line)) {
+    appendRow(line);
+  }
+
+  inFile.close();
+}
 
 // get terminal rows and columns
 void Editor::getWindowSize() {
@@ -84,24 +106,29 @@ void Editor::refreshScreen() {
 void Editor::drawRaws() {
   for (int i{}; i < settings.rows; i++) {
 
-    if (i == settings.rows / 3) {
-      std::string welcomeMessage{"Greek C++ editor"};
-      while (welcomeMessage.size() > (size_t)settings.columns) {
-        welcomeMessage.pop_back();
-      }
+    if (i >= settings.numRows) {
 
-      int padding = (settings.columns - welcomeMessage.size()) / 2;
-      if (padding) {
+      if (settings.numRows == 0 && i == settings.rows / 3) {
+        std::string welcomeMessage{"Greek C++ editor"};
+        while (welcomeMessage.size() > (size_t)settings.columns) {
+          welcomeMessage.pop_back();
+        }
+
+        int padding = (settings.columns - welcomeMessage.size()) / 2;
+        if (padding) {
+          buffer->append("~");
+          padding--;
+        }
+        while (padding--) {
+          buffer->append(" ");
+        }
+
+        buffer->append(welcomeMessage);
+      } else {
         buffer->append("~");
-        padding--;
       }
-      while (padding--) {
-        buffer->append(" ");
-      }
-
-      buffer->append(welcomeMessage);
     } else {
-      buffer->append("~");
+      buffer->append(*settings.editorRows->at(i)->rowText);
     }
 
     buffer->append("\x1b[K");
@@ -282,5 +309,6 @@ Editor::~Editor() {
   if (enteredRawMode) {
     disableRawMode();
   }
+
   delete buffer;
 }
