@@ -1,6 +1,6 @@
 #include "terminalState.hpp"
 terminalState::terminalState()
-    : cursorX{0}, cursorY{0}, rows{0}, columns{0}, numRows{0} {
+    : cursorX{0}, cursorY{0}, rows{0}, columns{0}, rowOffset{0}, numRows{0} {
   editorRows = new std::vector<EditorRow *>{};
 }
 terminalState::~terminalState() {

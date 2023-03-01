@@ -22,14 +22,15 @@ private:
   int getDirectionKeys(const char &c) const;
   int getArrowKeys() const;
   void appendRow(const std::string &row);
+  void scroll();
+  void getCusrorPosition();
 
 public:
+  void getWindowSize();
   void editorOpen(const std::string fileName);
   bool terminate = false;
   void editorMoveCursor(const int &key);
-  void getWindowSize();
-  void getCusrorPosition();
-  terminalState settings;
+  terminalState state;
   void clearScreen();
   int readKeyPress();
   void disableRawMode();

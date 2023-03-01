@@ -17,8 +17,8 @@ void Editor::appendRow(const std::string &text) {
   EditorRow *row = new EditorRow{};
   row->rowText->append(text);
   row->size = text.size();
-  settings.editorRows->push_back(row);
-  settings.numRows++;
+  state.editorRows->push_back(row);
+  state.numRows++;
 }
 void Editor::editorOpen(const std::string fileName) {
   std::ifstream inFile{};
@@ -46,8 +46,8 @@ void Editor::getWindowSize() {
     getCusrorPosition();
     return;
   }
-  settings.rows = ws.ws_row;
-  settings.columns = ws.ws_col;
+  state.rows = ws.ws_row;
+  state.columns = ws.ws_col;
 }
 
 // get cursor position
@@ -76,11 +76,12 @@ void Editor::getCusrorPosition() {
     }
   }
   std::stringstream is{tempString};
-  is >> settings.rows >> settings.columns;
+  is >> state.rows >> state.columns;
 }
 
 // terminal escape sequence
 void Editor::refreshScreen() {
+  scroll();
   // make cursor invisible
   buffer->append("\x1b[?25l");
   buffer->append("\x1b[H");
@@ -93,7 +94,8 @@ void Editor::refreshScreen() {
 
   // put cursor at the beggining
   // add one to start from 1 based index
-  is << "\x1b[" << settings.cursorY + 1 << ";" << settings.cursorX + 1 << "H";
+  is << "\x1b[" << (state.cursorY - state.rowOffset) + 1 << ";"
+     << state.cursorX + 1 << "H";
 
   buffer->append(is.str());
 
@@ -101,20 +103,23 @@ void Editor::refreshScreen() {
   // put cursor at the beggining
   buffer->append("\x1b[?25h");
   write(STDOUT_FILENO, buffer->c_str(), buffer->size());
+  // empty buffer
+  buffer->clear();
 }
 
 void Editor::drawRaws() {
-  for (int i{}; i < settings.rows; i++) {
+  for (int i{}; i < state.rows; i++) {
 
-    if (i >= settings.numRows) {
+    int fileRow = i + state.rowOffset;
+    if (fileRow >= state.numRows) {
 
-      if (settings.numRows == 0 && i == settings.rows / 3) {
-        std::string welcomeMessage{"Greek C++ editor"};
-        while (welcomeMessage.size() > (size_t)settings.columns) {
+      if (state.numRows == 0 && i == state.rows / 3) {
+        std::string welcomeMessage{"text editor"};
+        while (welcomeMessage.size() > (size_t)state.columns) {
           welcomeMessage.pop_back();
         }
 
-        int padding = (settings.columns - welcomeMessage.size()) / 2;
+        int padding = (state.columns - welcomeMessage.size()) / 2;
         if (padding) {
           buffer->append("~");
           padding--;
@@ -128,11 +133,11 @@ void Editor::drawRaws() {
         buffer->append("~");
       }
     } else {
-      buffer->append(*settings.editorRows->at(i)->rowText);
+      buffer->append(*state.editorRows->at(fileRow)->rowText);
     }
 
     buffer->append("\x1b[K");
-    if (i < settings.rows - 1) {
+    if (i < state.rows - 1) {
       buffer->append("\r\n");
     }
   }
@@ -221,23 +226,23 @@ int Editor::getArrowKeys() const {
 void Editor::editorMoveCursor(const int &key) {
   switch (key) {
   case ARROW_LEFT:
-    if (settings.cursorX > 0) {
-      settings.cursorX--;
+    if (state.cursorX > 0) {
+      state.cursorX--;
     }
     break;
   case ARROW_RIGHT:
-    if (settings.cursorX < settings.columns - 1) {
-      settings.cursorX++;
+    if (state.cursorX < state.columns - 1) {
+      state.cursorX++;
     }
     break;
   case ARROW_DOWN:
-    if (settings.cursorY < settings.rows - 1) {
-      settings.cursorY++;
+    if (state.cursorY < state.numRows) {
+      state.cursorY++;
     }
     break;
   case ARROW_UP:
-    if (settings.cursorY > 0) {
-      settings.cursorY--;
+    if (state.cursorY > 0) {
+      state.cursorY--;
     }
     break;
   }
@@ -252,17 +257,17 @@ void Editor::processKeypress() {
     break;
   case PAGE_UP:
   case PAGE_DOWN: {
-    int times = settings.rows;
+    int times = state.rows;
     while (times--) {
       editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
     }
 
   } break;
   case HOME:
-    settings.cursorX = 0;
+    state.cursorX = 0;
     break;
   case END:
-    settings.cursorX = settings.columns - 1;
+    state.cursorX = state.columns - 1;
     break;
   case Editor::editorSpecialKey::ARROW_UP:
   case Editor::editorSpecialKey::ARROW_DOWN:
@@ -276,24 +281,32 @@ void Editor::processKeypress() {
     break;
   }
 }
+void Editor::scroll() {
+  if (state.cursorY < state.rowOffset) {
+    state.rowOffset = state.cursorY;
+  }
+  if (state.cursorY >= state.rowOffset + state.rows) {
+    state.rowOffset = state.cursorY - state.rows + 1;
+  }
+}
 void Editor::disableRawMode() {
 
-  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &settings.original) == -1) {
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &state.original) == -1) {
     throw CustomException(
         (char *)"There was an error setting the terminal attributes");
   }
 }
-Editor::Editor() : enteredRawMode{false}, settings{} {
+Editor::Editor() : enteredRawMode{false}, state{} {
 
   buffer = new std::string{};
 }
 
 void Editor::enableRawMode() {
-  if (tcgetattr(STDIN_FILENO, &settings.original) == -1) {
+  if (tcgetattr(STDIN_FILENO, &state.original) == -1) {
     throw CustomException((char *)"There was an error getting the terminal "
                                   "attributes");
   }
-  struct termios raw = settings.original;
+  struct termios raw = state.original;
   // stop control-S control-Q
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
   raw.c_lflag &= ~(OPOST);
