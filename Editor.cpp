@@ -1,4 +1,5 @@
 #include "Editor.hpp"
+#include "EditorRow.hpp"
 #include <cstddef>
 #include <cstring>
 #include <exception>
@@ -95,7 +96,7 @@ void Editor::refreshScreen() {
   // put cursor at the beggining
   // add one to start from 1 based index
   is << "\x1b[" << (state.cursorY - state.rowOffset) + 1 << ";"
-     << state.cursorX + 1 << "H";
+     << (state.cursorX - state.collumnOffset) + 1 << "H";
 
   buffer->append(is.str());
 
@@ -133,7 +134,16 @@ void Editor::drawRaws() {
         buffer->append("~");
       }
     } else {
-      buffer->append(*state.editorRows->at(fileRow)->rowText);
+      // todo: check if screen is wide enough for text.
+      int len = state.editorRows->at(fileRow)->size - state.collumnOffset;
+      if (len < 0)
+        len = 0;
+      if (len > state.columns) {
+        len = state.columns;
+      }
+      buffer->append(
+          &state.editorRows->at(fileRow)->rowText->c_str()[state.collumnOffset],
+          len);
     }
 
     buffer->append("\x1b[K");
@@ -224,6 +234,9 @@ int Editor::getArrowKeys() const {
 }
 
 void Editor::editorMoveCursor(const int &key) {
+  EditorRow *row = (state.cursorY >= state.numRows)
+                       ? nullptr
+                       : state.editorRows->at(state.cursorY);
   switch (key) {
   case ARROW_LEFT:
     if (state.cursorX > 0) {
@@ -231,7 +244,7 @@ void Editor::editorMoveCursor(const int &key) {
     }
     break;
   case ARROW_RIGHT:
-    if (state.cursorX < state.columns - 1) {
+    if (row && state.cursorX < row->size) {
       state.cursorX++;
     }
     break;
@@ -245,6 +258,12 @@ void Editor::editorMoveCursor(const int &key) {
       state.cursorY--;
     }
     break;
+  }
+  row = (state.cursorY >= state.numRows) ? nullptr
+                                         : state.editorRows->at(state.cursorY);
+  int rowLen = row ? row->size : 0;
+  if (state.cursorX > rowLen) {
+    state.cursorX = rowLen;
   }
 }
 void Editor::processKeypress() {
@@ -287,6 +306,12 @@ void Editor::scroll() {
   }
   if (state.cursorY >= state.rowOffset + state.rows) {
     state.rowOffset = state.cursorY - state.rows + 1;
+  }
+  if (state.cursorX < state.collumnOffset) {
+    state.collumnOffset = state.cursorX;
+  }
+  if (state.cursorX >= state.collumnOffset + state.columns) {
+    state.collumnOffset = state.cursorX - state.columns + 1;
   }
 }
 void Editor::disableRawMode() {

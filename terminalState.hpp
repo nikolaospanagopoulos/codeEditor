@@ -9,6 +9,7 @@ public:
   int rows;
   int columns;
   int rowOffset; // row where the user scrolled to
+  int collumnOffset;
   int numRows;
   std::vector<EditorRow *> *editorRows;
   terminalState();
