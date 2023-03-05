@@ -14,11 +14,16 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+void Editor::updateRow(EditorRow *row) {
+  row->render->clear();
+  row->render->append(row->rowText->c_str());
+}
 void Editor::appendRow(const std::string &text) {
   EditorRow *row = new EditorRow{};
   row->rowText->append(text);
   row->size = text.size();
   state.editorRows->push_back(row);
+  updateRow(row);
   state.numRows++;
 }
 void Editor::editorOpen(const std::string fileName) {
@@ -135,14 +140,15 @@ void Editor::drawRaws() {
       }
     } else {
       // todo: check if screen is wide enough for text.
-      int len = state.editorRows->at(fileRow)->size - state.collumnOffset;
+      int len =
+          state.editorRows->at(fileRow)->render->size() - state.collumnOffset;
       if (len < 0)
         len = 0;
       if (len > state.columns) {
         len = state.columns;
       }
       buffer->append(
-          &state.editorRows->at(fileRow)->rowText->c_str()[state.collumnOffset],
+          &state.editorRows->at(fileRow)->render->c_str()[state.collumnOffset],
           len);
     }
 
@@ -241,11 +247,18 @@ void Editor::editorMoveCursor(const int &key) {
   case ARROW_LEFT:
     if (state.cursorX > 0) {
       state.cursorX--;
+    } else if (state.cursorY > 0) {
+      state.cursorY--;
+      state.cursorX = state.editorRows->at(state.cursorY)->size;
     }
+
     break;
   case ARROW_RIGHT:
     if (row && state.cursorX < row->size) {
       state.cursorX++;
+    } else if (row && state.cursorX == row->size) {
+      state.cursorY++;
+      state.cursorX = 0;
     }
     break;
   case ARROW_DOWN:

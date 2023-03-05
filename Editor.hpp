@@ -1,4 +1,5 @@
 #pragma once
+#include "EditorRow.hpp"
 #include "terminalState.hpp"
 #include <iostream>
 
@@ -24,6 +25,7 @@ private:
   void appendRow(const std::string &row);
   void scroll();
   void getCusrorPosition();
+  void updateRow(EditorRow *row);
 
 public:
   void getWindowSize();
