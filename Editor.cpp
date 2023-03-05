@@ -15,8 +15,19 @@
 #include <unistd.h>
 
 void Editor::updateRow(EditorRow *row) {
+  // todo: fix
   row->render->clear();
-  row->render->append(row->rowText->c_str());
+  int idx = 0;
+  for (size_t i{}; i < (size_t)row->size; i++) {
+    if (row->rowText->at(i) == '\t') {
+      row->render->insert(idx++, 1, ' ');
+      while (idx % 8 != 0) {
+        row->render->insert(idx++, 1, ' ');
+      }
+    } else {
+      row->render->insert(idx++, 1, row->rowText->at(i));
+    }
+  }
 }
 void Editor::appendRow(const std::string &text) {
   EditorRow *row = new EditorRow{};
@@ -85,6 +96,17 @@ void Editor::getCusrorPosition() {
   is >> state.rows >> state.columns;
 }
 
+int Editor::cursorXtoRx(EditorRow *row) {
+  int rx = 0;
+  for (size_t i{}; i < (size_t)state.cursorX; i++) {
+    if (row->rowText->at(i) == '\t') {
+      rx += (8 - 1) - (rx % 8);
+    }
+    rx++;
+  }
+  return rx;
+}
+
 // terminal escape sequence
 void Editor::refreshScreen() {
   scroll();
@@ -101,7 +123,7 @@ void Editor::refreshScreen() {
   // put cursor at the beggining
   // add one to start from 1 based index
   is << "\x1b[" << (state.cursorY - state.rowOffset) + 1 << ";"
-     << (state.cursorX - state.collumnOffset) + 1 << "H";
+     << (state.rx - state.collumnOffset) + 1 << "H";
 
   buffer->append(is.str());
 
@@ -314,17 +336,21 @@ void Editor::processKeypress() {
   }
 }
 void Editor::scroll() {
+  state.rx = 0;
+  if (state.cursorY < state.numRows) {
+    state.rx = cursorXtoRx(state.editorRows->at(state.cursorY));
+  }
   if (state.cursorY < state.rowOffset) {
     state.rowOffset = state.cursorY;
   }
   if (state.cursorY >= state.rowOffset + state.rows) {
     state.rowOffset = state.cursorY - state.rows + 1;
   }
-  if (state.cursorX < state.collumnOffset) {
-    state.collumnOffset = state.cursorX;
+  if (state.rx < state.collumnOffset) {
+    state.collumnOffset = state.rx;
   }
-  if (state.cursorX >= state.collumnOffset + state.columns) {
-    state.collumnOffset = state.cursorX - state.columns + 1;
+  if (state.rx >= state.collumnOffset + state.columns) {
+    state.collumnOffset = state.rx - state.columns + 1;
   }
 }
 void Editor::disableRawMode() {

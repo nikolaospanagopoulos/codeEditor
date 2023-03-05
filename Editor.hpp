@@ -26,6 +26,7 @@ private:
   void scroll();
   void getCusrorPosition();
   void updateRow(EditorRow *row);
+  int cursorXtoRx(EditorRow *row);
 
 public:
   void getWindowSize();

@@ -11,6 +11,7 @@ public:
   int rowOffset; // row where the user scrolled to
   int collumnOffset;
   int numRows;
+  int rx;
   std::vector<EditorRow *> *editorRows;
   terminalState();
   ~terminalState();
