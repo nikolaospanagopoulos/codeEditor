@@ -9,10 +9,11 @@ int main(int argc, char *argv[]) {
     editor.enableRawMode();
     editor.getWindowSize();
     // last row will be for status bar
-    editor.state.rows--;
+    editor.state.rows -= 2;
     if (argc >= 2) {
       editor.editorOpen(argv[1]);
     }
+    editor.setStatusMessage("HELP: CTRL-q = quit", 1);
     // read key and refreshScreen
     while (!editor.terminate) {
       editor.refreshScreen();

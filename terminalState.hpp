@@ -1,5 +1,6 @@
 #pragma once
 #include "EditorRow.hpp"
+#include <ctime>
 #include <termios.h>
 #include <vector>
 class terminalState {
@@ -13,6 +14,9 @@ public:
   int numRows;
   int rx;
   std::string filename;
+  time_t statusMessageTime;
+  std::string statusMessage;
+
   std::vector<EditorRow *> *editorRows;
   terminalState();
   ~terminalState();

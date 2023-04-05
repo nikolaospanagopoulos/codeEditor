@@ -2,10 +2,13 @@
 #include "EditorRow.hpp"
 #include "terminalState.hpp"
 #include <iostream>
+#include <sstream>
+#include <string>
 
 class Editor {
 private:
   enum editorSpecialKey {
+    BACKSPACE = 127,
     ARROW_UP = 1000,
     ARROW_DOWN,
     ARROW_LEFT,
@@ -28,8 +31,21 @@ private:
   void getCusrorPosition();
   void updateRow(EditorRow *row);
   int cursorXtoRx(EditorRow *row);
+  void drawStatusMessageBar();
+  void editorRowInsertChar(EditorRow *row, int at, int c);
+  void insertChar(int c);
 
 public:
+  template <class... T>
+  std::string setStatusMessage(std::string message, T... args) {
+    std::stringstream stream;
+    stream << message;
+    using List = int[];
+    (void)List{0, ((void)(stream << args), 0)...};
+    state.statusMessageTime = time(NULL);
+    state.statusMessage = stream.str();
+    return stream.str();
+  }
   void getWindowSize();
   void editorOpen(const std::string fileName);
   bool terminate = false;

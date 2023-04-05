@@ -4,9 +4,7 @@
 #include <cstring>
 #include <exception>
 #include <istream>
-#include <sstream>
 #include <stdexcept>
-#include <string>
 #define CTRL_KEY(key) ((key)&0b00011111)
 #include "CustomException.hpp"
 #include <cstdlib>
@@ -52,7 +50,29 @@ void Editor::editorOpen(const std::string fileName) {
 
   inFile.close();
 }
-
+void Editor::editorRowInsertChar(EditorRow *row, int at, int c) {
+  if (at < 0 || at > row->size) {
+    at = row->size;
+  }
+  row->size++;
+  row->rowText->insert(row->rowText->begin() + at, c);
+  updateRow(row);
+}
+void Editor::drawStatusMessageBar() {
+  buffer->append("\x1b[K", 3);
+  if (!state.statusMessage.empty() &&
+      time(NULL) - state.statusMessageTime < 5) {
+    buffer->append(state.statusMessage);
+  }
+}
+void Editor::insertChar(int c) {
+  if (state.cursorY == state.numRows) {
+    // we are at the end of file
+    appendRow("");
+  }
+  editorRowInsertChar(state.editorRows->at(state.cursorY), state.cursorX, c);
+  state.cursorX++;
+}
 // get terminal rows and columns
 void Editor::getWindowSize() {
   struct winsize ws;
@@ -117,6 +137,7 @@ void Editor::refreshScreen() {
 
   drawRows();
   drawStatusBar();
+  drawStatusMessageBar();
 
   // put cursor at the beggining
 
@@ -197,6 +218,7 @@ void Editor::drawStatusBar() {
     len++;
   }
   buffer->append("\x1b[m", 3);
+  buffer->append("\r\n", 2);
 }
 void Editor::clearScreen() {
   write(STDOUT_FILENO, "\x1b[2J]", 4);
@@ -213,7 +235,7 @@ int Editor::readKeyPress() {
   }
 
   // todo: make it better
-  return getDirectionKeys(c);
+  return c;
 }
 int Editor::getDirectionKeys(const char &c) const {
 
@@ -326,6 +348,9 @@ void Editor::processKeypress() {
     clearScreen();
     terminate = true;
     break;
+  case '\r':
+    /* TODO */
+    break;
   case PAGE_UP:
   case PAGE_DOWN: {
     int times = state.rows;
@@ -333,8 +358,9 @@ void Editor::processKeypress() {
       editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
     }
 
-  } break;
-  case 'I':
+    break;
+  }
+  case HOME:
     state.cursorX = 0;
     break;
     /*
@@ -342,20 +368,35 @@ case END:
 state.cursorX = state.columns - 1;
 break;
     */
-  case 'A':
+  case END:
     if (state.cursorY < state.numRows) {
       state.cursorX = state.editorRows->at(state.cursorY)->size;
     }
+    break;
+  case BACKSPACE:
+  case CTRL_KEY('h'):
+  case DELETE:
     break;
   case Editor::editorSpecialKey::ARROW_UP:
   case Editor::editorSpecialKey::ARROW_DOWN:
   case Editor::editorSpecialKey::ARROW_LEFT:
   case Editor::editorSpecialKey::ARROW_RIGHT:
-  case 'j':
-  case 'k':
-  case 'l':
-  case 'h':
+    /*
+case 'j':
+case 'k':
+case 'l':
+case 'h':
+*/
     editorMoveCursor(c);
+    break;
+  case '\0':
+    break;
+  case CTRL_KEY('l'):
+  case '\x1b':
+    break;
+  default:
+
+    insertChar(c);
     break;
   }
 }
