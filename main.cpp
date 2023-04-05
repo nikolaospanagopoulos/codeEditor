@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     if (argc >= 2) {
       editor.editorOpen(argv[1]);
     }
-    editor.setStatusMessage("HELP: CTRL-q = quit", 1);
+    editor.setStatusMessage("HELP: CTRL-q=quit", "CTRL-s=save");
     // read key and refreshScreen
     while (!editor.terminate) {
       editor.refreshScreen();

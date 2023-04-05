@@ -35,6 +35,46 @@ void Editor::appendRow(const std::string &text) {
   updateRow(row);
   state.numRows++;
 }
+std::string *Editor::rowsToString() {
+  int totalSize{};
+  for (size_t i{}; i < (size_t)state.numRows; i++) {
+    totalSize += state.editorRows->at(i)->size + 1;
+  }
+  std::string *newFile = new std::string{};
+  // todo: maybe std::move???
+  newFile->reserve(totalSize);
+  for (size_t i{}; i < (size_t)state.numRows; i++) {
+    newFile->append(state.editorRows->at(i)->rowText->c_str());
+    newFile->append("\n");
+  }
+
+  return newFile;
+}
+void Editor::save() {
+  if (state.filename.empty()) {
+    return;
+  }
+  std::ofstream outFile{state.filename};
+  if (!outFile) {
+    throw CustomException((char *)"There was an error creating the file");
+  }
+
+  std::string *newFileContents = rowsToString();
+
+  int numOfBytes = newFileContents->size();
+  if (outFile << *newFileContents) {
+    setStatusMessage("writen to disk", numOfBytes, "bytes", "efoefoe", "ekek");
+  } else {
+
+    setStatusMessage("couldnt write to disk", "I/O error");
+    delete newFileContents;
+    outFile.close();
+    throw CustomException((char *)"couldnt write to disk");
+  }
+
+  delete newFileContents;
+  outFile.close();
+}
 void Editor::editorOpen(const std::string fileName) {
   std::ifstream inFile{};
   inFile.open(fileName);
@@ -360,6 +400,9 @@ void Editor::processKeypress() {
 
     break;
   }
+  case CTRL_KEY('s'):
+    save();
+    break;
   case HOME:
     state.cursorX = 0;
     break;

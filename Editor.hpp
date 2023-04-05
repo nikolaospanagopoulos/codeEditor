@@ -21,6 +21,8 @@ private:
   };
   // cleanup
   std::string *buffer;
+  std::string *rowsToString();
+  void save();
   void drawStatusBar();
   void drawRows();
   bool enteredRawMode;
@@ -39,9 +41,9 @@ public:
   template <class... T>
   std::string setStatusMessage(std::string message, T... args) {
     std::stringstream stream;
-    stream << message;
+    stream << message << " ";
     using List = int[];
-    (void)List{0, ((void)(stream << args), 0)...};
+    (void)List{0, ((void)(stream << args << " "), 0)...};
     state.statusMessageTime = time(NULL);
     state.statusMessage = stream.str();
     return stream.str();
