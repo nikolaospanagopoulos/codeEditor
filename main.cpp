@@ -8,7 +8,8 @@ int main(int argc, char *argv[]) {
   try {
     editor.enableRawMode();
     editor.getWindowSize();
-
+    // last row will be for status bar
+    editor.state.rows--;
     if (argc >= 2) {
       editor.editorOpen(argv[1]);
     }

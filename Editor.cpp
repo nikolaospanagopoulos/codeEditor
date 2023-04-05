@@ -44,6 +44,7 @@ void Editor::editorOpen(const std::string fileName) {
     throw CustomException((char *)"There was a problem opening the file ");
   }
 
+  state.filename = fileName;
   std::string line{};
   while (std::getline(inFile, line)) {
     appendRow(line);
@@ -114,7 +115,8 @@ void Editor::refreshScreen() {
   buffer->append("\x1b[?25l");
   buffer->append("\x1b[H");
 
-  drawRaws();
+  drawRows();
+  drawStatusBar();
 
   // put cursor at the beggining
 
@@ -135,7 +137,7 @@ void Editor::refreshScreen() {
   buffer->clear();
 }
 
-void Editor::drawRaws() {
+void Editor::drawRows() {
   for (int i{}; i < state.rows; i++) {
 
     int fileRow = i + state.rowOffset;
@@ -174,13 +176,28 @@ void Editor::drawRaws() {
           len);
     }
 
-    buffer->append("\x1b[K");
-    if (i < state.rows - 1) {
-      buffer->append("\r\n");
-    }
+    buffer->append("\x1b[K", 3);
+    buffer->append("\r\n", 2);
   }
 }
-
+void Editor::drawStatusBar() {
+  buffer->append("\x1b[7m", 4);
+  std::stringstream infoText{};
+  std::string statusFileName =
+      !state.filename.empty() ? state.filename : "No Name";
+  infoText << statusFileName;
+  if (!state.filename.empty()) {
+    infoText << " line: " << state.cursorY + 1 << "/" << state.numRows;
+  }
+  std::string finalStatus = infoText.str();
+  int len = finalStatus.size();
+  buffer->append(finalStatus, 0, len);
+  while (len < state.columns) {
+    buffer->append(" ", 1);
+    len++;
+  }
+  buffer->append("\x1b[m", 3);
+}
 void Editor::clearScreen() {
   write(STDOUT_FILENO, "\x1b[2J]", 4);
   write(STDOUT_FILENO, "\x1b[H", 3);
@@ -284,7 +301,7 @@ void Editor::editorMoveCursor(const int &key) {
     }
     break;
   case ARROW_DOWN:
-    if (state.cursorY < state.numRows) {
+    if (state.cursorY < state.numRows - 1) {
       state.cursorY++;
     }
     break;
@@ -317,11 +334,18 @@ void Editor::processKeypress() {
     }
 
   } break;
-  case HOME:
+  case 'I':
     state.cursorX = 0;
     break;
-  case END:
-    state.cursorX = state.columns - 1;
+    /*
+case END:
+state.cursorX = state.columns - 1;
+break;
+    */
+  case 'A':
+    if (state.cursorY < state.numRows) {
+      state.cursorX = state.editorRows->at(state.cursorY)->size;
+    }
     break;
   case Editor::editorSpecialKey::ARROW_UP:
   case Editor::editorSpecialKey::ARROW_DOWN:

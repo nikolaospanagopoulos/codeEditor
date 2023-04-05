@@ -12,6 +12,7 @@ public:
   int collumnOffset;
   int numRows;
   int rx;
+  std::string filename;
   std::vector<EditorRow *> *editorRows;
   terminalState();
   ~terminalState();

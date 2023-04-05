@@ -18,7 +18,8 @@ private:
   };
   // cleanup
   std::string *buffer;
-  void drawRaws();
+  void drawStatusBar();
+  void drawRows();
   bool enteredRawMode;
   int getDirectionKeys(const char &c) const;
   int getArrowKeys() const;
