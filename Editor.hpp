@@ -32,7 +32,8 @@ private:
   bool enteredRawMode;
   int getDirectionKeys(const char &c) const;
   int getArrowKeys() const;
-  void appendRow(const std::string &row);
+  void insertNewLine();
+  void appendRow(int at, const std::string &row);
   void scroll();
   void getCusrorPosition();
   void updateRow(EditorRow *row);

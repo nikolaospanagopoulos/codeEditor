@@ -30,7 +30,6 @@ void Editor::deleteRow(int posision) {
   state.dirty++;
 }
 void Editor::updateRow(EditorRow *row) {
-  // todo: fix
   row->render->clear();
   int idx = 0;
   for (size_t i{}; i < (size_t)row->size; i++) {
@@ -44,11 +43,15 @@ void Editor::updateRow(EditorRow *row) {
     }
   }
 }
-void Editor::appendRow(const std::string &text) {
+void Editor::appendRow(int at, const std::string &text) {
+  if (at < 0 || at > state.numRows)
+    return;
+
   EditorRow *row = new EditorRow{};
   row->rowText->append(text);
   row->size = text.size();
-  state.editorRows->push_back(row);
+  state.editorRows->insert(state.editorRows->begin() + at, row);
+
   updateRow(row);
   state.numRows++;
   state.dirty++;
@@ -103,11 +106,26 @@ void Editor::editorOpen(const std::string fileName) {
   state.filename = fileName;
   std::string line{};
   while (std::getline(inFile, line)) {
-    appendRow(line);
+    appendRow(state.numRows, line);
   }
 
   inFile.close();
   state.dirty = 0;
+}
+void Editor::insertNewLine() {
+  if (state.cursorX == 0) {
+    appendRow(state.cursorY, "");
+  } else {
+    EditorRow *row = state.editorRows->at(state.cursorY);
+    std::string remains = &row->rowText->c_str()[state.cursorX];
+    appendRow(state.cursorY + 1, remains);
+    row = state.editorRows->at(state.cursorY);
+    row->rowText->resize(state.cursorX);
+    row->size = row->rowText->size();
+    updateRow(row);
+  }
+  state.cursorY++;
+  state.cursorX = 0;
 }
 void Editor::editorRowInsertChar(EditorRow *row, int at, int c) {
   if (at < 0 || at > row->size) {
@@ -127,7 +145,7 @@ void Editor::drawStatusMessageBar() {
 void Editor::insertChar(int c) {
   if (state.cursorY == state.numRows) {
     // we are at the end of file
-    appendRow("");
+    appendRow(state.numRows, "");
   }
   editorRowInsertChar(state.editorRows->at(state.cursorY), state.cursorX, c);
   state.cursorX++;
@@ -445,7 +463,7 @@ void Editor::processKeypress() {
     terminate = true;
     break;
   case '\r':
-    /* TODO */
+    insertNewLine();
     break;
   case PAGE_UP:
   case PAGE_DOWN: {
