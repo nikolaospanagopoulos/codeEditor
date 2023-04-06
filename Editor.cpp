@@ -12,6 +12,23 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+void Editor::appendString(EditorRow *row, std::string *toAppend) {
+  // maybe reserve space
+  *(row->rowText) += *toAppend;
+  row->size += toAppend->size();
+  updateRow(row);
+  state.dirty++;
+}
+void Editor::deleteRow(int posision) {
+  if (posision < 0 || posision >= state.numRows) {
+    return;
+  }
+  // maybe decrement numrows by one ????
+  delete state.editorRows->at(posision);
+  state.editorRows->erase(state.editorRows->begin() + posision);
+  state.numRows--;
+  state.dirty++;
+}
 void Editor::updateRow(EditorRow *row) {
   // todo: fix
   row->render->clear();
@@ -34,6 +51,7 @@ void Editor::appendRow(const std::string &text) {
   state.editorRows->push_back(row);
   updateRow(row);
   state.numRows++;
+  state.dirty++;
 }
 std::string *Editor::rowsToString() {
   int totalSize{};
@@ -63,7 +81,7 @@ void Editor::save() {
 
   int numOfBytes = newFileContents->size();
   if (outFile << *newFileContents) {
-    setStatusMessage("writen to disk", numOfBytes, "bytes", "efoefoe", "ekek");
+    setStatusMessage("writen to disk", numOfBytes, "bytes");
   } else {
 
     setStatusMessage("couldnt write to disk", "I/O error");
@@ -71,7 +89,7 @@ void Editor::save() {
     outFile.close();
     throw CustomException((char *)"couldnt write to disk");
   }
-
+  state.dirty = 0;
   delete newFileContents;
   outFile.close();
 }
@@ -89,6 +107,7 @@ void Editor::editorOpen(const std::string fileName) {
   }
 
   inFile.close();
+  state.dirty = 0;
 }
 void Editor::editorRowInsertChar(EditorRow *row, int at, int c) {
   if (at < 0 || at > row->size) {
@@ -112,6 +131,7 @@ void Editor::insertChar(int c) {
   }
   editorRowInsertChar(state.editorRows->at(state.cursorY), state.cursorX, c);
   state.cursorX++;
+  state.dirty++;
 }
 // get terminal rows and columns
 void Editor::getWindowSize() {
@@ -250,6 +270,9 @@ void Editor::drawStatusBar() {
   if (!state.filename.empty()) {
     infoText << " line: " << state.cursorY + 1 << "/" << state.numRows;
   }
+  if (state.dirty) {
+    infoText << " (mofified)";
+  }
   std::string finalStatus = infoText.str();
   int len = finalStatus.size();
   buffer->append(finalStatus, 0, len);
@@ -263,6 +286,7 @@ void Editor::drawStatusBar() {
 void Editor::clearScreen() {
   write(STDOUT_FILENO, "\x1b[2J]", 4);
   write(STDOUT_FILENO, "\x1b[H", 3);
+  write(STDOUT_FILENO, "\033c", 3);
 }
 
 int Editor::readKeyPress() {
@@ -380,11 +404,43 @@ void Editor::editorMoveCursor(const int &key) {
     state.cursorX = rowLen;
   }
 }
+void Editor::deleteChar() {
+  // maybe minus 1
+  if (state.cursorY == state.numRows) {
+    return;
+  }
+  if (state.cursorX == 0 && state.cursorY == 0) {
+    return;
+  }
+  EditorRow *row = state.editorRows->at(state.cursorY);
+  if (state.cursorX > 0) {
+    deleteRowChar(state.editorRows->at(state.cursorY));
+    state.cursorX--;
+  } else {
+    state.cursorX = state.editorRows->at(state.cursorY - 1)->size;
+    // maybe move text
+    appendString(state.editorRows->at(state.cursorY - 1),
+                 std::move(row->rowText));
+    deleteRow(state.cursorY);
+    state.cursorY--;
+  }
+}
+void Editor::deleteRowChar(EditorRow *row) {
+  row->rowText->erase(row->rowText->begin() + state.cursorX - 1);
+  row->size--;
+  updateRow(row);
+  state.dirty++;
+}
 void Editor::processKeypress() {
-
+  static int quitTimes = 1;
   int c = readKeyPress();
   switch (c) {
   case CTRL_KEY('q'):
+    if (state.dirty && quitTimes > 0) {
+      setStatusMessage("WARNING!!!!", "unsaved changes!!!");
+      quitTimes--;
+      return;
+    }
     clearScreen();
     terminate = true;
     break;
@@ -419,6 +475,10 @@ break;
   case BACKSPACE:
   case CTRL_KEY('h'):
   case DELETE:
+    if (c == DELETE) {
+      editorMoveCursor(ARROW_RIGHT);
+    }
+    deleteChar();
     break;
   case Editor::editorSpecialKey::ARROW_UP:
   case Editor::editorSpecialKey::ARROW_DOWN:

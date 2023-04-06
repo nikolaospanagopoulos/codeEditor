@@ -22,6 +22,10 @@ private:
   // cleanup
   std::string *buffer;
   std::string *rowsToString();
+  void deleteRow(int posision);
+  void appendString(EditorRow *row, std::string *toAppend);
+  void deleteChar();
+  void deleteRowChar(EditorRow *row);
   void save();
   void drawStatusBar();
   void drawRows();

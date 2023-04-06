@@ -16,8 +16,8 @@ public:
   std::string filename;
   time_t statusMessageTime;
   std::string statusMessage;
-
   std::vector<EditorRow *> *editorRows;
+  int dirty;
   terminalState();
   ~terminalState();
 };
