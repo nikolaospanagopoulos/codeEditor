@@ -22,6 +22,7 @@ private:
   // cleanup
   std::string *buffer;
   std::string *rowsToString();
+  std::string prompt(std::string &prompt);
   void deleteRow(int posision);
   void appendString(EditorRow *row, std::string *toAppend);
   void deleteChar();

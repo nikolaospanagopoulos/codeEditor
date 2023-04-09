@@ -71,9 +71,38 @@ std::string *Editor::rowsToString() {
 
   return newFile;
 }
+std::string Editor::prompt(std::string &prompt) {
+  std::string userAnswerBuffer{};
+  while (1) {
+    setStatusMessage(prompt, userAnswerBuffer);
+    refreshScreen();
+    int c = readKeyPress();
+    if (c == BACKSPACE) {
+      if (!userAnswerBuffer.empty()) {
+        userAnswerBuffer.pop_back();
+      }
+    } else if (c == '\x1b') {
+      setStatusMessage("");
+      userAnswerBuffer.clear();
+      return "";
+    } else if (c == '\r') {
+      if (!userAnswerBuffer.empty()) {
+        setStatusMessage("");
+        return userAnswerBuffer;
+      }
+    } else if (!std::iscntrl(c) && c < 128) {
+      userAnswerBuffer.push_back(c);
+    }
+  }
+}
 void Editor::save() {
   if (state.filename.empty()) {
-    return;
+    std::string promptStr{"save as: "};
+    state.filename = prompt(promptStr);
+    if (state.filename.empty()) {
+      setStatusMessage("Save aborted");
+      return;
+    }
   }
   std::ofstream outFile{state.filename};
   if (!outFile) {
